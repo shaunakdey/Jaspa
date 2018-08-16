@@ -1,24 +1,51 @@
 const ipcRenderer = require('electron').ipcRenderer
 const dirTree = require('directory-tree')
+const numeral = require('numeral')
 var imagesDOM
 
+//Folder Size Processing
+var formatSize = (folderSize) => {
+    var prefix = ['bytes', 'KB', 'MB', 'GB', 'TB']
+    var prefixCounter = 0
+    while(folderSize > 1024){
+        folderSize = folderSize / 1024
+        prefixCounter = prefixCounter + 1
+    }
+    return (numeral(folderSize).format('0.0') + " " + prefix[prefixCounter])
+}
+
+//IPC Listener
 ipcRenderer.on('directory-path', (e, path) => {
     var images = dirTree(path, {extensions: /(\.jpg|\.png|\.jpeg)/i}).children
-    var appContainer = document.querySelector('.app-container')
-    var innerHTML = ""
+    var pictureList = document.querySelector('.picture-list')
+    var mediaDetailList = document.querySelector('.media-detail-area')
+    mediaDetailList.innerHTML = "<p style='flex-basis: 60%'>Please hover on an image for details</p>"
+    var panelInnerHTML = ""
+    document.querySelector('.item-count').innerHTML = "<p>" + images.length + " items</p>"
+    var folderSize = 0
     images.forEach((image) => {
-        innerHTML = innerHTML + "<div class='panel'><img height='100%' src='" + image.path + "'></div>"
+        panelInnerHTML = panelInnerHTML + "<div class='panel'><img height='100%' src='" + image.path + "'></div>"
+        folderSize = folderSize + image.size
     })
-    appContainer.innerHTML = innerHTML
+    document.querySelector('.folder-size').innerHTML = "<p>" + formatSize(folderSize) + "</p>"
+    pictureList.innerHTML = panelInnerHTML
     //Image click Listeners
     imagesDOM = document.querySelectorAll('img')
-    console.log(imagesDOM)
     imagesDOM.forEach((image, idx) => {
+        //Image Click Listener
         image.addEventListener('click', () => {
             modal.classList.toggle('modal-is-active')
             modal.classList.toggle('modal-is-inactive')
             document.querySelector('.modal-content').innerHTML = "<img width='80%' src='" + image.src + "'/>"
             currImageIdx = idx
+        })
+        //Image Hover Listeners
+        image.addEventListener('mouseenter', () => {
+            var detail = "<p>Name: " + images[idx].name + "</p><p>Size: " + formatSize(images[idx].size)
+            mediaDetailList.innerHTML = detail;
+        })
+        image.addEventListener('mouseout', () => {
+            mediaDetailList.innerHTML = "<p>Please hover on an image for details</p>"
         })
     })
 })
